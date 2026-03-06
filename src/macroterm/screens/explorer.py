@@ -1,7 +1,9 @@
 from textual.app import ComposeResult
-from textual.containers import Vertical
-from textual.widgets import DataTable, Input, LoadingIndicator, Static
+from textual.containers import Horizontal, Vertical
+from textual.widgets import DataTable, Input, LoadingIndicator, OptionList, Static
+from textual.widgets.option_list import Option
 
+from macroterm.data.bls import get_by_category, get_categories
 from macroterm.data.search import search_all
 from macroterm.screens.detail import SeriesDetailScreen
 
@@ -12,19 +14,50 @@ class ExplorerPane(Vertical):
         height: 1fr;
         padding: 1 2;
     }
+
+    #explorer-body {
+        height: 1fr;
+    }
+
+    #category-list {
+        width: 24;
+        height: 1fr;
+        margin-right: 1;
+    }
+
+    #explorer-right {
+        height: 1fr;
+    }
     """
 
     def compose(self) -> ComposeResult:
         yield Static("Data Series Explorer", classes="section-title")
         yield Input(placeholder="Search series (e.g. GDP, CPI, unemployment)...", id="explorer-input")
         yield LoadingIndicator(id="explorer-loading")
-        yield DataTable(id="series-table")
+        with Horizontal(id="explorer-body"):
+            yield OptionList(id="category-list")
+            with Vertical(id="explorer-right"):
+                yield DataTable(id="series-table")
 
     def on_mount(self) -> None:
         table = self.query_one("#series-table", DataTable)
         table.add_columns("Source", "Series ID", "Title", "Frequency", "Units")
         table.cursor_type = "row"
         self.query_one("#explorer-loading").display = False
+
+        cat_list = self.query_one("#category-list", OptionList)
+        for cat in get_categories():
+            cat_list.add_option(Option(cat, id=cat))
+
+    def on_option_list_option_selected(self, event: OptionList.OptionSelected) -> None:
+        category = str(event.option.id)
+        table = self.query_one("#series-table", DataTable)
+        table.clear()
+
+        entries = get_by_category(category)
+        for e in entries:
+            row_key = f"BLS:{e.series_id}"
+            table.add_row("BLS", e.series_id, e.title, e.frequency, e.units, key=row_key)
 
     def on_input_submitted(self, event: Input.Submitted) -> None:
         query = event.value.strip()
