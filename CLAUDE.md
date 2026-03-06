@@ -28,7 +28,6 @@ No test framework or linter is configured yet.
 
 - **`fred.py`** — FRED API client (search, observations, releases, category series). Has a `CATEGORIES` dict mapping display names to FRED category IDs. Category IDs must be leaf-level (not parent containers) or `get_category_series` returns nothing.
 - **`bls.py`** — BLS API client + local catalog. BLS has no search API, so we maintain a `CATALOG` list of `BLSCatalogEntry` with keyword-based fuzzy matching via `search_catalog()`. Each entry has a `category` field for browse-by-category.
-- **`finnhub.py`** — Finnhub economic calendar client.
 - **`search.py`** — Unified `search_all()` that fans out to FRED API + BLS local catalog. Returns `SearchResult` with a `source` field ("FRED" or "BLS").
 - **`cache.py`** — `async_ttl_cache(ttl_seconds)` decorator for async functions. In-memory dict keyed on `qualname + repr(args, kwargs)`. Exceptions are not cached.
 
@@ -36,8 +35,8 @@ No test framework or linter is configured yet.
 
 - **`explorer.py`** — Search bar + category sidebar (OptionList) + results table (DataTable). Category sidebar shows both FRED and BLS categories with prefixed labels. BLS categories populate instantly (local); FRED categories fetch via API.
 - **`detail.py`** — `SeriesDetailScreen` accepts `source` param and dispatches to `_fetch_fred()` or `_fetch_bls()`.
-- **`calendar.py`** — Upcoming/recent economic events from Finnhub.
-- **`alerts.py`** — Release date alerts from FRED.
+- **`calendar.py`** — Upcoming economic release dates from FRED.
+- **`alerts.py`** — Recent release dates from FRED.
 
 ### Adding a New Data Source
 
@@ -54,7 +53,7 @@ No test framework or linter is configured yet.
 
 ## Environment Variables
 
-Defined in `.env` (gitignored): `FRED_API_KEY`, `BLS_API_KEY`, `FINNHUB_API_KEY`. FRED and Finnhub keys are required; BLS key is optional (public API works without, registered key gets higher rate limits).
+Defined in `.env` (gitignored): `FRED_API_KEY`, `BLS_API_KEY`. FRED key is required; BLS key is optional (public API works without, registered key gets higher rate limits).
 
 ## Git Conventions
 
