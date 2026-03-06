@@ -50,6 +50,146 @@ class ReleaseDate:
     date: str
 
 
+GEO_TYPES: dict[str, str] = {
+    "National": "nation",
+    "US State": "state",
+    "US Metro (MSA)": "msa",
+    "US County": "county",
+}
+
+GEO_COUNTRIES: dict[str, str] = {
+    "United States": "usa",
+    "Japan": "japan",
+    "Germany": "germany",
+    "United Kingdom": "united kingdom",
+    "Canada": "canada",
+    "France": "france",
+    "China": "china",
+    "Australia": "australia",
+    "Brazil": "brazil",
+    "India": "india",
+    "Mexico": "mexico",
+    "South Korea": "korea",
+    "Italy": "italy",
+    "Spain": "spain",
+    "Netherlands": "netherlands",
+    "Switzerland": "switzerland",
+    "Sweden": "sweden",
+    "Norway": "norway",
+    "Denmark": "denmark",
+    "South Africa": "south africa",
+    "Russia": "russia",
+    "Turkey": "turkey",
+    "Indonesia": "indonesia",
+    "Euro Area": "europe",
+    "World": "world",
+}
+
+GEO_US_STATES: dict[str, str] = {
+    "Alabama": "al",
+    "Alaska": "ak",
+    "Arizona": "az",
+    "Arkansas": "ar",
+    "California": "ca",
+    "Colorado": "co",
+    "Connecticut": "ct",
+    "Delaware": "de",
+    "District of Columbia": "dc",
+    "Florida": "fl",
+    "Georgia": "ga",
+    "Hawaii": "hi",
+    "Idaho": "id",
+    "Illinois": "il",
+    "Indiana": "in",
+    "Iowa": "ia",
+    "Kansas": "ks",
+    "Kentucky": "ky",
+    "Louisiana": "la",
+    "Maine": "me",
+    "Maryland": "md",
+    "Massachusetts": "ma",
+    "Michigan": "mi",
+    "Minnesota": "mn",
+    "Mississippi": "ms",
+    "Missouri": "mo",
+    "Montana": "mt",
+    "Nebraska": "ne",
+    "Nevada": "nv",
+    "New Hampshire": "nh",
+    "New Jersey": "nj",
+    "New Mexico": "nm",
+    "New York": "ny",
+    "North Carolina": "nc",
+    "North Dakota": "nd",
+    "Ohio": "oh",
+    "Oklahoma": "ok",
+    "Oregon": "or",
+    "Pennsylvania": "pa",
+    "Rhode Island": "ri",
+    "South Carolina": "sc",
+    "South Dakota": "sd",
+    "Tennessee": "tn",
+    "Texas": "tx",
+    "Utah": "ut",
+    "Vermont": "vt",
+    "Virginia": "va",
+    "Washington": "wa",
+    "West Virginia": "wv",
+    "Wisconsin": "wi",
+    "Wyoming": "wy",
+}
+
+GEO_US_METROS: dict[str, str] = {
+    "New York": "new york",
+    "Los Angeles": "los angeles",
+    "Chicago": "chicago",
+    "Dallas-Fort Worth": "dallas",
+    "Houston": "houston",
+    "Washington DC": "washington",
+    "Miami": "miami",
+    "Philadelphia": "philadelphia",
+    "Atlanta": "atlanta",
+    "Boston": "boston",
+    "Phoenix": "phoenix",
+    "San Francisco": "san francisco",
+    "Seattle": "seattle",
+    "Minneapolis": "minneapolis",
+    "Denver": "denver",
+    "San Diego": "san diego",
+    "Tampa": "tampa",
+    "Detroit": "detroit",
+    "Portland": "portland",
+    "Charlotte": "charlotte",
+    "Austin": "austin",
+    "Nashville": "nashville",
+    "Las Vegas": "las vegas",
+    "Baltimore": "baltimore",
+    "St. Louis": "st. louis",
+}
+
+GEO_US_COUNTIES: dict[str, str] = {
+    "Los Angeles County, CA": "los angeles",
+    "Cook County, IL": "cook",
+    "Harris County, TX": "harris",
+    "Maricopa County, AZ": "maricopa",
+    "San Diego County, CA": "san diego",
+    "Orange County, CA": "orange",
+    "Miami-Dade County, FL": "miami-dade",
+    "Dallas County, TX": "dallas",
+    "King County, WA": "king",
+    "Clark County, NV": "clark",
+    "Tarrant County, TX": "tarrant",
+    "San Bernardino County, CA": "san bernardino",
+    "Bexar County, TX": "bexar",
+    "Broward County, FL": "broward",
+    "Wayne County, MI": "wayne",
+    "Allegheny County, PA": "allegheny",
+    "New York County, NY": "new york",
+    "Middlesex County, MA": "middlesex",
+    "Sacramento County, CA": "sacramento",
+    "Palm Beach County, FL": "palm beach",
+}
+
 CATEGORIES: dict[str, int] = {
     # Prices
     "Consumer Price Indexes": 9,
@@ -82,18 +222,23 @@ CATEGORIES: dict[str, int] = {
 
 
 @async_ttl_cache(3600)
-async def get_category_series(category_id: int, limit: int = 25) -> list[Series]:
+async def get_category_series(
+    category_id: int, limit: int = 25, tag_names: str | None = None,
+) -> list[Series]:
+    params: dict = {
+        "api_key": _api_key(),
+        "file_type": "json",
+        "category_id": category_id,
+        "limit": limit,
+        "order_by": "popularity",
+        "sort_order": "desc",
+    }
+    if tag_names:
+        params["tag_names"] = tag_names
     async with httpx.AsyncClient() as client:
         resp = await client.get(
             f"{FRED_BASE_URL}/category/series",
-            params={
-                "api_key": _api_key(),
-                "file_type": "json",
-                "category_id": category_id,
-                "limit": limit,
-                "order_by": "popularity",
-                "sort_order": "desc",
-            },
+            params=params,
         )
         resp.raise_for_status()
         data = resp.json()
@@ -111,16 +256,21 @@ async def get_category_series(category_id: int, limit: int = 25) -> list[Series]
 
 
 @async_ttl_cache(300)
-async def search_series(query: str, limit: int = 25) -> list[Series]:
+async def search_series(
+    query: str, limit: int = 25, tag_names: str | None = None,
+) -> list[Series]:
+    params: dict = {
+        "api_key": _api_key(),
+        "file_type": "json",
+        "search_text": query,
+        "limit": limit,
+    }
+    if tag_names:
+        params["tag_names"] = tag_names
     async with httpx.AsyncClient() as client:
         resp = await client.get(
             f"{FRED_BASE_URL}/series/search",
-            params={
-                "api_key": _api_key(),
-                "file_type": "json",
-                "search_text": query,
-                "limit": limit,
-            },
+            params=params,
         )
         resp.raise_for_status()
         data = resp.json()
