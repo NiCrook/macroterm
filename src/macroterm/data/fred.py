@@ -50,6 +50,48 @@ class ReleaseDate:
     date: str
 
 
+CATEGORIES: dict[str, int] = {
+    "Consumer Price Indexes": 9,
+    "Producer Price Indexes": 31,
+    "Employment & Labor": 10,
+    "National Accounts (GDP)": 32992,
+    "Industrial Production": 3,
+    "Money Supply (M1 & M2)": 29,
+    "Monetary Base & Reserves": 124,
+    "Exchange Rates (Daily)": 94,
+    "Trade & Balance of Payments": 125,
+}
+
+
+@async_ttl_cache(3600)
+async def get_category_series(category_id: int, limit: int = 25) -> list[Series]:
+    async with httpx.AsyncClient() as client:
+        resp = await client.get(
+            f"{FRED_BASE_URL}/category/series",
+            params={
+                "api_key": _api_key(),
+                "file_type": "json",
+                "category_id": category_id,
+                "limit": limit,
+                "order_by": "popularity",
+                "sort_order": "desc",
+            },
+        )
+        resp.raise_for_status()
+        data = resp.json()
+
+    return [
+        Series(
+            id=s["id"],
+            title=s["title"],
+            frequency=s.get("frequency", ""),
+            units=s.get("units", ""),
+            last_updated=s.get("last_updated", ""),
+        )
+        for s in data.get("seriess", [])
+    ]
+
+
 @async_ttl_cache(300)
 async def search_series(query: str, limit: int = 25) -> list[Series]:
     async with httpx.AsyncClient() as client:
