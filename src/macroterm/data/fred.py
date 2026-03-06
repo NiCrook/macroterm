@@ -51,15 +51,33 @@ class ReleaseDate:
 
 
 CATEGORIES: dict[str, int] = {
+    # Prices
     "Consumer Price Indexes": 9,
     "Producer Price Indexes": 31,
+    "Commodities": 32217,
+    "House Price Indexes": 32261,
+    # Employment & Labor
     "Employment & Labor": 10,
+    "Weekly Initial Claims": 32240,
+    "ADP Employment": 32250,
+    # National Accounts & Debt
     "National Accounts (GDP)": 32992,
+    "Federal Government Debt": 5,
+    # Production & Business
     "Industrial Production": 3,
+    "Retail Trade": 6,
+    "Manufacturing": 32429,
+    "Construction": 32436,
+    "Housing": 97,
+    "Business Surveys": 33936,
+    # Money & Finance
     "Money Supply (M1 & M2)": 29,
     "Monetary Base & Reserves": 124,
+    "Financial Indicators": 46,
     "Exchange Rates (Daily)": 94,
     "Trade & Balance of Payments": 125,
+    # Other
+    "Recession Probabilities": 33120,
 }
 
 
