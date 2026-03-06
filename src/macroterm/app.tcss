@@ -1,0 +1,44 @@
+Screen {
+    background: $surface;
+}
+
+TabbedContent {
+    height: 1fr;
+}
+
+#release-table {
+    height: 1fr;
+}
+
+#explorer-input {
+    dock: top;
+    margin: 1 1;
+}
+
+#series-table {
+    height: 1fr;
+}
+
+#alerts-table {
+    height: 1fr;
+}
+
+.pane-container {
+    height: 1fr;
+    padding: 1 2;
+}
+
+.section-title {
+    text-style: bold;
+    color: $accent;
+    margin-bottom: 1;
+}
+
+#detail-container {
+    height: 1fr;
+    padding: 1 2;
+}
+
+#detail-table {
+    height: 1fr;
+}
