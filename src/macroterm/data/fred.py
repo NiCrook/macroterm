@@ -223,7 +223,7 @@ CATEGORIES: dict[str, int] = {
 
 @async_ttl_cache(3600)
 async def get_category_series(
-    category_id: int, limit: int = 25, tag_names: str | None = None,
+    category_id: int, limit: int = 100, tag_names: str | None = None,
 ) -> list[Series]:
     params: dict = {
         "api_key": _api_key(),

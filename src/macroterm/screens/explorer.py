@@ -1,3 +1,4 @@
+import httpx
 from textual.app import ComposeResult
 from textual.containers import Horizontal, Vertical
 from textual.widgets import DataTable, Input, LoadingIndicator, OptionList, Select, Static
@@ -18,6 +19,7 @@ from macroterm.data.search import search_all
 from macroterm.screens.detail import SeriesDetailScreen
 
 BLANK = Select.BLANK
+_SENTINEL = getattr(Select, "NULL", BLANK)  # Textual >=1.x uses NULL, older uses BLANK
 
 # Location options keyed by geo type value
 _LOCATION_OPTIONS: dict[str, list[tuple[str, str]]] = {
@@ -111,14 +113,14 @@ class ExplorerPane(Vertical):
         geo_type = geo_type_sel.value
         geo_loc = geo_loc_sel.value
 
-        if geo_type is BLANK or not geo_type:
+        if geo_type is BLANK or geo_type is _SENTINEL or not geo_type:
             return None, None
 
         geo_type_str = str(geo_type)
 
         if geo_type_str == "nation":
             # Append country name to search text instead of using tags
-            if geo_loc is not BLANK and geo_loc:
+            if geo_loc is not BLANK and geo_loc is not _SENTINEL and geo_loc:
                 # Find the display name for this tag value
                 for name, tag in GEO_COUNTRIES.items():
                     if tag == str(geo_loc):
@@ -127,7 +129,7 @@ class ExplorerPane(Vertical):
 
         # US sub-national: use tag_names
         parts: list[str] = [geo_type_str]
-        if geo_loc is not BLANK and geo_loc:
+        if geo_loc is not BLANK and geo_loc is not _SENTINEL and geo_loc:
             parts.append(str(geo_loc))
         return ";".join(parts), None
 
@@ -141,7 +143,7 @@ class ExplorerPane(Vertical):
         loc_select = self.query_one("#geo-location-select", Select)
         geo_type = event.value
 
-        if geo_type is BLANK or not geo_type:
+        if geo_type is BLANK or geo_type is _SENTINEL or not geo_type:
             loc_select.set_options([])
             loc_select.disabled = True
             # Cleared geo filter — re-run to show unfiltered results
@@ -193,9 +195,14 @@ class ExplorerPane(Vertical):
                 query = category_name
                 if extra_text:
                     query = f"{category_name} {extra_text}"
-                series = await search_series(query, limit=25, tag_names=tag_names)
+                series = await search_series(query, limit=100, tag_names=tag_names)
             else:
-                series = await get_category_series(category_id)
+                try:
+                    series = await get_category_series(category_id)
+                except httpx.HTTPStatusError:
+                    series = []
+                if not series:
+                    series = await search_series(category_name, limit=100)
         except Exception as e:
             loading.display = False
             table.add_row("—", "—", str(e), "—", "—")
@@ -229,7 +236,7 @@ class ExplorerPane(Vertical):
         search_query = f"{query} {extra_text}" if extra_text else query
 
         try:
-            results = await search_all(search_query, limit=25, tag_names=tag_names)
+            results = await search_all(search_query, limit=100, tag_names=tag_names)
         except Exception as e:
             loading.display = False
             table.add_row("—", "—", str(e), "—", "—")

@@ -8,6 +8,21 @@ from macroterm.data.bls import get_series_data
 from macroterm.data.fred import get_observations
 
 
+def _format_change(current_val: str, prev_val: str) -> str:
+    try:
+        curr = float(current_val)
+        prev = float(prev_val)
+    except (ValueError, TypeError):
+        return "[dim]—[/dim]"
+    diff = curr - prev
+    if diff > 0:
+        return f"[green]▲ +{diff:.2f}[/green]"
+    elif diff < 0:
+        return f"[red]▼ {diff:.2f}[/red]"
+    else:
+        return "[dim]— 0.00[/dim]"
+
+
 class SeriesDetailScreen(Screen):
     BINDINGS = [
         Binding("escape", "pop_screen", "Back"),
@@ -31,7 +46,7 @@ class SeriesDetailScreen(Screen):
     def on_mount(self) -> None:
         self.sub_title = self.series_id
         table = self.query_one("#detail-table", DataTable)
-        table.add_columns("Date", "Value")
+        table.add_columns("Date", "Value", "Change")
         table.cursor_type = "row"
         table.display = False
         self.run_worker(self._fetch_data(), name="fetch_detail")
@@ -46,7 +61,7 @@ class SeriesDetailScreen(Screen):
             else:
                 await self._fetch_fred(table)
         except Exception as e:
-            table.add_row("—", str(e))
+            table.add_row("—", str(e), "")
         finally:
             loading.display = False
             table.display = True
@@ -54,20 +69,28 @@ class SeriesDetailScreen(Screen):
     async def _fetch_fred(self, table: DataTable) -> None:
         observations = await get_observations(self.series_id, limit=50)
         if not observations:
-            table.add_row("—", "No observations found")
+            table.add_row("—", "No observations found", "")
             return
-        for o in observations:
-            table.add_row(o.date, o.value)
+        for i, o in enumerate(observations):
+            if i + 1 < len(observations):
+                change = _format_change(o.value, observations[i + 1].value)
+            else:
+                change = "[dim]—[/dim]"
+            table.add_row(o.date, o.value, change)
 
     async def _fetch_bls(self, table: DataTable) -> None:
         data = await get_series_data([self.series_id])
         series = data.get(self.series_id, [])
         if not series:
-            table.add_row("—", "No data found")
+            table.add_row("—", "No data found", "")
             return
-        for point in series:
+        for i, point in enumerate(series):
             date_label = f"{point.period_name} {point.year}"
-            table.add_row(date_label, point.value)
+            if i + 1 < len(series):
+                change = _format_change(point.value, series[i + 1].value)
+            else:
+                change = "[dim]—[/dim]"
+            table.add_row(date_label, point.value, change)
 
     def action_pop_screen(self) -> None:
         self.app.pop_screen()
