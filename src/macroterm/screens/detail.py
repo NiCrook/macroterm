@@ -4,6 +4,7 @@ from textual.containers import Vertical
 from textual.screen import Screen
 from textual.widgets import DataTable, Footer, Header, LoadingIndicator, Static
 
+from macroterm.data import watchlist
 from macroterm.data.bls import get_series_data
 from macroterm.data.fred import get_observations
 
@@ -27,6 +28,7 @@ class SeriesDetailScreen(Screen):
     BINDINGS = [
         Binding("escape", "pop_screen", "Back"),
         Binding("q", "pop_screen", "Back"),
+        Binding("b", "toggle_bookmark", "Bookmark"),
     ]
 
     def __init__(self, series_id: str, series_title: str, source: str = "FRED") -> None:
@@ -91,6 +93,14 @@ class SeriesDetailScreen(Screen):
             else:
                 change = "[dim]—[/dim]"
             table.add_row(date_label, point.value, change)
+
+    def action_toggle_bookmark(self) -> None:
+        if watchlist.is_bookmarked(self.series_id, self.source):
+            watchlist.remove(self.series_id, self.source)
+            self.notify(f"Removed {self.series_id} from watchlist")
+        else:
+            watchlist.add(self.series_id, self.source, self.series_title)
+            self.notify(f"Bookmarked {self.series_id}")
 
     def action_pop_screen(self) -> None:
         self.app.pop_screen()

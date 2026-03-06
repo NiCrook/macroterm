@@ -1,5 +1,6 @@
 import httpx
 from textual.app import ComposeResult
+from textual.binding import Binding
 from textual.containers import Horizontal, Vertical
 from textual.widgets import DataTable, Input, LoadingIndicator, OptionList, Select, Static
 from textual.widgets.option_list import Option
@@ -16,6 +17,7 @@ from macroterm.data.fred import (
     search_series,
 )
 from macroterm.data.search import search_all
+from macroterm.data import watchlist
 from macroterm.screens.detail import SeriesDetailScreen
 
 BLANK = Select.BLANK
@@ -31,6 +33,10 @@ _LOCATION_OPTIONS: dict[str, list[tuple[str, str]]] = {
 
 
 class ExplorerPane(Vertical):
+    BINDINGS = [
+        Binding("b", "bookmark_series", "Bookmark"),
+    ]
+
     DEFAULT_CSS = """
     ExplorerPane {
         height: 1fr;
@@ -264,3 +270,17 @@ class ExplorerPane(Vertical):
         series_title = row[2]
         if series_id and series_id != "—":
             self.app.push_screen(SeriesDetailScreen(series_id, series_title, source))
+
+    def action_bookmark_series(self) -> None:
+        table = self.query_one("#series-table", DataTable)
+        try:
+            row_key = table.coordinate_to_cell_key(table.cursor_coordinate).row_key
+            row = table.get_row(row_key)
+        except Exception:
+            return
+        source = row[0]
+        series_id = row[1]
+        title = row[2]
+        if series_id and series_id != "—":
+            watchlist.add(series_id, source, title)
+            self.notify(f"Bookmarked {series_id}")

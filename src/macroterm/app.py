@@ -9,6 +9,7 @@ from textual.widgets import Footer, Header, TabbedContent, TabPane
 from macroterm.screens.calendar import CalendarPane
 from macroterm.screens.explorer import ExplorerPane
 from macroterm.screens.alerts import AlertsPane
+from macroterm.screens.watchlist import WatchlistPane
 
 
 class MacroTermApp(App):
@@ -21,6 +22,7 @@ class MacroTermApp(App):
         Binding("1", "tab_calendar", "Calendar", show=False),
         Binding("2", "tab_explorer", "Explorer", show=False),
         Binding("3", "tab_alerts", "Alerts", show=False),
+        Binding("4", "tab_watchlist", "Watchlist", show=False),
     ]
 
     def compose(self) -> ComposeResult:
@@ -32,6 +34,8 @@ class MacroTermApp(App):
                 yield ExplorerPane()
             with TabPane("Alerts [3]", id="tab-alerts"):
                 yield AlertsPane()
+            with TabPane("Watchlist [4]", id="tab-watchlist"):
+                yield WatchlistPane()
         yield Footer()
 
     def action_tab_calendar(self) -> None:
@@ -42,6 +46,9 @@ class MacroTermApp(App):
 
     def action_tab_alerts(self) -> None:
         self.query_one(TabbedContent).active = "tab-alerts"
+
+    def action_tab_watchlist(self) -> None:
+        self.query_one(TabbedContent).active = "tab-watchlist"
 
 
 def main() -> None:

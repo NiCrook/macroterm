@@ -42,3 +42,7 @@ TabbedContent {
 #detail-table {
     height: 1fr;
 }
+
+#watchlist-table {
+    height: 1fr;
+}
