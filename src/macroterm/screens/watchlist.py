@@ -1,12 +1,20 @@
 from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.containers import Vertical
-from textual.widgets import DataTable, LoadingIndicator, Static
+from textual.widgets import DataTable, LoadingIndicator, Sparkline, Static
 
 from macroterm.data import watchlist
 from macroterm.data.bls import get_series_data
 from macroterm.data.fred import get_observations
 from macroterm.screens.detail import SeriesDetailScreen
+
+
+def _is_float(v: str) -> bool:
+    try:
+        float(v)
+        return True
+    except (ValueError, TypeError):
+        return False
 
 
 def _format_change(current_val: str, prev_val: str) -> str:
@@ -41,12 +49,16 @@ class WatchlistPane(Vertical):
         yield Static("Watchlist", classes="section-title")
         yield LoadingIndicator(id="watchlist-loading")
         yield DataTable(id="watchlist-table")
+        with Vertical(id="sparkline-preview"):
+            yield Static("", id="sparkline-preview-label")
+            yield Sparkline([], id="watchlist-sparkline")
 
     def on_mount(self) -> None:
         table = self.query_one("#watchlist-table", DataTable)
         table.add_columns("Source", "Series ID", "Title", "Latest Value", "Date", "Change")
         table.cursor_type = "row"
         table.display = False
+        self.query_one("#sparkline-preview").display = False
         self._refresh_watchlist()
 
     def on_show(self) -> None:
@@ -97,6 +109,44 @@ class WatchlistPane(Vertical):
 
         loading.display = False
         table.display = True
+
+    def on_data_table_row_highlighted(self, event: DataTable.RowHighlighted) -> None:
+        if event.row_key is None:
+            return
+        table = self.query_one("#watchlist-table", DataTable)
+        try:
+            row = table.get_row(event.row_key)
+        except Exception:
+            return
+        source = row[0]
+        series_id = row[1]
+        if series_id and series_id != "—":
+            self.run_worker(
+                self._fetch_sparkline_preview(series_id, source, row[2]),
+                name="sparkline_preview",
+                exclusive=True,
+            )
+
+    async def _fetch_sparkline_preview(self, series_id: str, source: str, title: str) -> None:
+        sparkline = self.query_one("#watchlist-sparkline", Sparkline)
+        label = self.query_one("#sparkline-preview-label", Static)
+        try:
+            if source == "BLS":
+                data = await get_series_data([series_id])
+                series = data.get(series_id, [])
+                raw = [p.value for p in reversed(series)]
+            else:
+                obs = await get_observations(series_id, limit=20)
+                raw = [o.value for o in reversed(obs)] if obs else []
+            values = [float(v) for v in raw if _is_float(v)]
+            if values:
+                sparkline.data = values
+                label.update(f"[dim]{title}[/dim]")
+                self.query_one("#sparkline-preview").display = True
+            else:
+                self.query_one("#sparkline-preview").display = False
+        except Exception:
+            self.query_one("#sparkline-preview").display = False
 
     def on_data_table_row_selected(self, event: DataTable.RowSelected) -> None:
         table = self.query_one("#watchlist-table", DataTable)

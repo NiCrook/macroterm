@@ -39,10 +39,54 @@ TabbedContent {
     padding: 1 2;
 }
 
+#detail-sparkline {
+    height: 4;
+    margin: 0 1 1 1;
+    color: $success;
+}
+
 #detail-table {
     height: 1fr;
 }
 
+#sparkline-preview {
+    height: 4;
+    margin: 1 0 0 0;
+}
+
+#sparkline-preview Sparkline {
+    height: 3;
+    color: $success;
+}
+
+#sparkline-preview Static {
+    height: 1;
+    color: $text-muted;
+}
+
 #watchlist-table {
     height: 1fr;
+}
+
+#feeds-table {
+    height: 1fr;
+}
+
+#feed-detail-container {
+    height: 1fr;
+    padding: 1 2;
+}
+
+#feed-detail-title {
+    text-style: bold;
+    color: $accent;
+    margin-bottom: 0;
+}
+
+#feed-detail-meta {
+    margin-bottom: 1;
+}
+
+#feed-detail-body {
+    margin: 1 0;
 }

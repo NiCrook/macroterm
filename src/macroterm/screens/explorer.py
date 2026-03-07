@@ -2,7 +2,7 @@ import httpx
 from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.containers import Horizontal, Vertical
-from textual.widgets import DataTable, Input, LoadingIndicator, OptionList, Select, Static
+from textual.widgets import DataTable, Input, LoadingIndicator, OptionList, Select, Sparkline, Static
 from textual.widgets.option_list import Option
 
 from macroterm.data.bls import get_by_category, get_categories
@@ -14,11 +14,21 @@ from macroterm.data.fred import (
     GEO_US_METROS,
     GEO_US_STATES,
     get_category_series,
+    get_observations,
     search_series,
 )
+from macroterm.data.bls import get_series_data
 from macroterm.data.search import search_all
 from macroterm.data import watchlist
 from macroterm.screens.detail import SeriesDetailScreen
+
+def _is_float(v: str) -> bool:
+    try:
+        float(v)
+        return True
+    except (ValueError, TypeError):
+        return False
+
 
 BLANK = Select.BLANK
 _SENTINEL = getattr(Select, "NULL", BLANK)  # Textual >=1.x uses NULL, older uses BLANK
@@ -94,12 +104,16 @@ class ExplorerPane(Vertical):
             yield OptionList(id="category-list")
             with Vertical(id="explorer-right"):
                 yield DataTable(id="series-table")
+                with Vertical(id="sparkline-preview"):
+                    yield Static("", id="sparkline-preview-label")
+                    yield Sparkline([], id="explorer-sparkline")
 
     def on_mount(self) -> None:
         table = self.query_one("#series-table", DataTable)
         table.add_columns("Source", "Series ID", "Title", "Frequency", "Units")
         table.cursor_type = "row"
         self.query_one("#explorer-loading").display = False
+        self.query_one("#sparkline-preview").display = False
 
         cat_list = self.query_one("#category-list", OptionList)
         for name, cat_id in FRED_CATEGORIES.items():
@@ -261,6 +275,44 @@ class ExplorerPane(Vertical):
                 continue
             seen.add(row_key)
             table.add_row(s.source, s.series_id, s.title, s.frequency, s.units, key=row_key)
+
+    def on_data_table_row_highlighted(self, event: DataTable.RowHighlighted) -> None:
+        if event.row_key is None:
+            return
+        table = self.query_one("#series-table", DataTable)
+        try:
+            row = table.get_row(event.row_key)
+        except Exception:
+            return
+        source = row[0]
+        series_id = row[1]
+        if series_id and series_id != "—":
+            self.run_worker(
+                self._fetch_sparkline_preview(series_id, source, row[2]),
+                name="sparkline_preview",
+                exclusive=True,
+            )
+
+    async def _fetch_sparkline_preview(self, series_id: str, source: str, title: str) -> None:
+        sparkline = self.query_one("#explorer-sparkline", Sparkline)
+        label = self.query_one("#sparkline-preview-label", Static)
+        try:
+            if source == "BLS":
+                data = await get_series_data([series_id])
+                series = data.get(series_id, [])
+                raw = [p.value for p in reversed(series)]
+            else:
+                obs = await get_observations(series_id, limit=20)
+                raw = [o.value for o in reversed(obs)] if obs else []
+            values = [float(v) for v in raw if _is_float(v)]
+            if values:
+                sparkline.data = values
+                label.update(f"[dim]{title}[/dim]")
+                self.query_one("#sparkline-preview").display = True
+            else:
+                self.query_one("#sparkline-preview").display = False
+        except Exception:
+            self.query_one("#sparkline-preview").display = False
 
     def on_data_table_row_selected(self, event: DataTable.RowSelected) -> None:
         table = self.query_one("#series-table", DataTable)
