@@ -15,6 +15,9 @@ FEEDS: dict[str, str] = {
     "Federal Reserve": "https://www.federalreserve.gov/feeds/press_all.xml",
     "BEA": "https://apps.bea.gov/rss/rss.xml",
     "Census Bureau": "https://www.census.gov/economic-indicators/indicator.xml",
+    "ECB": "https://www.ecb.europa.eu/rss/press.html",
+    "ECB Blog": "https://www.ecb.europa.eu/rss/blog.html",
+    "BIS Speeches": "https://www.bis.org/doclist/cbspeeches.rss",
 }
 
 
@@ -35,27 +38,52 @@ def _parse_pub_date(raw: str) -> datetime | None:
         return None
 
 
+def _parse_iso_date(raw: str) -> datetime | None:
+    """Parse ISO 8601 date from dc:date element."""
+    try:
+        return datetime.fromisoformat(raw.replace("Z", "+00:00"))
+    except Exception:
+        return None
+
+
+_RSS1_NS = {"rss1": "http://purl.org/rss/1.0/", "dc": "http://purl.org/dc/elements/1.1/"}
+
+
 def _parse_feed(xml_text: str, source: str) -> list[RSSEvent]:
-    """Parse RSS XML into RSSEvent list."""
+    """Parse RSS 2.0 or RSS 1.0 (RDF) XML into RSSEvent list."""
     root = ET.fromstring(xml_text)
     events: list[RSSEvent] = []
 
-    for item in root.findall(".//item"):
-        title = (item.findtext("title") or "").strip()
-        link = (item.findtext("link") or "").strip()
-        description = (item.findtext("description") or "").strip()
-        pub_date_raw = (item.findtext("pubDate") or "").strip()
+    # Try RSS 2.0 first, fall back to RSS 1.0 (RDF with namespaces)
+    items = root.findall(".//item")
+    if items:
+        for item in items:
+            title = (item.findtext("title") or "").strip()
+            link = (item.findtext("link") or "").strip()
+            description = (item.findtext("description") or "").strip()
+            pub_date_raw = (item.findtext("pubDate") or "").strip()
 
-        dt = _parse_pub_date(pub_date_raw)
-        date_str = dt.strftime("%Y-%m-%d") if dt else ""
+            dt = _parse_pub_date(pub_date_raw)
+            date_str = dt.strftime("%Y-%m-%d") if dt else ""
 
-        events.append(RSSEvent(
-            title=title,
-            source=source,
-            date=date_str,
-            link=link,
-            description=description,
-        ))
+            events.append(RSSEvent(
+                title=title, source=source, date=date_str,
+                link=link, description=description,
+            ))
+    else:
+        for item in root.findall(".//rss1:item", _RSS1_NS):
+            title = (item.findtext("rss1:title", namespaces=_RSS1_NS) or "").strip()
+            link = (item.findtext("rss1:link", namespaces=_RSS1_NS) or "").strip()
+            description = (item.findtext("rss1:description", namespaces=_RSS1_NS) or "").strip()
+            dc_date = (item.findtext("dc:date", namespaces=_RSS1_NS) or "").strip()
+
+            dt = _parse_iso_date(dc_date)
+            date_str = dt.strftime("%Y-%m-%d") if dt else ""
+
+            events.append(RSSEvent(
+                title=title, source=source, date=date_str,
+                link=link, description=description,
+            ))
 
     return events
 
