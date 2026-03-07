@@ -3,6 +3,9 @@ from textual.containers import Vertical
 from textual.widgets import DataTable, LoadingIndicator, Static
 
 from macroterm.data.fred import get_release_dates
+from macroterm.logger import get_logger
+
+logger = get_logger("screens.calendar")
 
 
 class CalendarPane(Vertical):
@@ -35,6 +38,7 @@ class CalendarPane(Vertical):
         try:
             releases = await get_release_dates()
         except Exception as e:
+            logger.error("failed to fetch calendar data", exc_info=True)
             loading.display = False
             table.display = True
             table.add_row("—", str(e), "—")

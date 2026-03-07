@@ -5,7 +5,10 @@ from textual.containers import Vertical
 from textual.widgets import DataTable, LoadingIndicator, Static
 
 from macroterm.data.rss import RSSEvent, get_rss_events
+from macroterm.logger import get_logger
 from macroterm.screens.feed_detail import FeedDetailScreen
+
+logger = get_logger("screens.feeds")
 
 
 class FeedsPane(Vertical):
@@ -42,6 +45,7 @@ class FeedsPane(Vertical):
         try:
             self._events = await get_rss_events()
         except Exception as e:
+            logger.error("failed to fetch feeds", exc_info=True)
             loading.display = False
             table.display = True
             table.add_row("—", str(e), "—")

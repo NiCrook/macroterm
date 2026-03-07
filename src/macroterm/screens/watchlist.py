@@ -9,8 +9,11 @@ from macroterm.data import watchlist
 from macroterm.data.bls import get_series_data
 from macroterm.data.format import format_change, is_float
 from macroterm.data.fred import get_observations
+from macroterm.logger import get_logger
 from macroterm.screens.compare import CompareScreen
 from macroterm.screens.detail import SeriesDetailScreen
+
+logger = get_logger("screens.watchlist")
 
 
 class _ComparePickerModal(ModalScreen[tuple[str, str, str] | None]):
@@ -144,6 +147,9 @@ class WatchlistPane(Vertical):
                 else:
                     value, date, change = "N/A", "—", "[dim]—[/dim]"
             except Exception:
+                logger.warning("failed to fetch watchlist entry data", extra={"extra_fields": {
+                    "series_id": entry.series_id, "source": entry.source,
+                }}, exc_info=True)
                 value, date, change = "Error", "—", "[dim]—[/dim]"
 
             row_key = f"{entry.source}:{entry.series_id}"
@@ -188,6 +194,9 @@ class WatchlistPane(Vertical):
             else:
                 self.query_one("#sparkline-preview").display = False
         except Exception:
+            logger.debug("sparkline preview failed", extra={"extra_fields": {
+                "series_id": series_id, "source": source,
+            }}, exc_info=True)
             self.query_one("#sparkline-preview").display = False
 
     def on_data_table_row_selected(self, event: DataTable.RowSelected) -> None:

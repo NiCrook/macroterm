@@ -21,7 +21,10 @@ from macroterm.data.bls import get_series_data
 from macroterm.data.format import is_float
 from macroterm.data.search import search_all
 from macroterm.data import watchlist
+from macroterm.logger import get_logger
 from macroterm.screens.detail import SeriesDetailScreen
+
+logger = get_logger("screens.explorer")
 
 
 BLANK = Select.BLANK
@@ -218,6 +221,9 @@ class ExplorerPane(Vertical):
                 if not series:
                     series = await search_series(category_name, limit=100)
         except Exception as e:
+            logger.error("failed to fetch category series", extra={"extra_fields": {
+                "category_id": category_id, "category_name": category_name,
+            }}, exc_info=True)
             loading.display = False
             table.add_row("—", "—", str(e), "—", "—")
             return
@@ -252,6 +258,9 @@ class ExplorerPane(Vertical):
         try:
             results = await search_all(search_query, limit=100, tag_names=tag_names)
         except Exception as e:
+            logger.error("search failed", extra={"extra_fields": {
+                "query": search_query,
+            }}, exc_info=True)
             loading.display = False
             table.add_row("—", "—", str(e), "—", "—")
             return

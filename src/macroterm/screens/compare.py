@@ -9,6 +9,9 @@ from textual.widgets import DataTable, Footer, Header, LoadingIndicator, Sparkli
 from macroterm.data.bls import get_series_data
 from macroterm.data.format import format_change, is_float, parse_floats
 from macroterm.data.fred import get_observations
+from macroterm.logger import get_logger
+
+logger = get_logger("screens.compare")
 
 
 async def _fetch_series(series_id: str, source: str) -> list[tuple[str, str]]:
@@ -99,6 +102,9 @@ class CompareScreen(Screen):
             a_data = await _fetch_series(self.a_id, self.a_source)
             b_data = await _fetch_series(self.b_id, self.b_source)
         except Exception as e:
+            logger.error("failed to fetch comparison data", extra={"extra_fields": {
+                "series_a": self.a_id, "series_b": self.b_id,
+            }}, exc_info=True)
             loading.display = False
             table.display = True
             table.add_row("—", str(e), "", "", "")

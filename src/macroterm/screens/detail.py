@@ -8,6 +8,9 @@ from macroterm.data import watchlist
 from macroterm.data.bls import get_series_data
 from macroterm.data.format import format_change, parse_floats
 from macroterm.data.fred import get_observations
+from macroterm.logger import get_logger
+
+logger = get_logger("screens.detail")
 
 
 class SeriesDetailScreen(Screen):
@@ -52,6 +55,9 @@ class SeriesDetailScreen(Screen):
             else:
                 await self._fetch_fred(table, sparkline)
         except Exception as e:
+            logger.error("failed to fetch series detail", extra={"extra_fields": {
+                "series_id": self.series_id, "source": self.source,
+            }}, exc_info=True)
             table.add_row("—", str(e), "")
         finally:
             loading.display = False

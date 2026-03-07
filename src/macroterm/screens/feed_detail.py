@@ -5,6 +5,9 @@ from textual.screen import Screen
 from textual.widgets import Footer, Header, LoadingIndicator, Static
 
 from macroterm.data.rss import _strip_html, fetch_fed_article
+from macroterm.logger import get_logger
+
+logger = get_logger("screens.feed_detail")
 
 
 class FeedDetailScreen(Screen):
@@ -46,7 +49,9 @@ class FeedDetailScreen(Screen):
             try:
                 body = await fetch_fed_article(self.link)
             except Exception:
-                pass
+                logger.warning("failed to fetch fed article", extra={"extra_fields": {
+                    "link": self.link,
+                }}, exc_info=True)
 
         # Fall back to RSS description
         if not body:
