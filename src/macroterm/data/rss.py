@@ -10,6 +10,9 @@ from email.utils import parsedate_to_datetime
 import httpx
 
 from macroterm.data.cache import async_ttl_cache
+from macroterm.logger import get_logger
+
+logger = get_logger("rss")
 
 FEEDS: dict[str, str] = {
     "Federal Reserve": "https://www.federalreserve.gov/feeds/press_all.xml",
@@ -90,10 +93,15 @@ def _parse_feed(xml_text: str, source: str) -> list[RSSEvent]:
 
 @async_ttl_cache(1800)
 async def _fetch_feed(source: str, url: str) -> list[RSSEvent]:
+    logger.debug("fetching feed", extra={"extra_fields": {"source": source, "url": url}})
     async with httpx.AsyncClient() as client:
         resp = await client.get(url, timeout=15, follow_redirects=True)
         resp.raise_for_status()
-    return _parse_feed(resp.text, source)
+    events = _parse_feed(resp.text, source)
+    logger.info("fetched feed", extra={"extra_fields": {
+        "source": source, "count": len(events),
+    }})
+    return events
 
 
 async def get_rss_events() -> list[RSSEvent]:
@@ -104,8 +112,14 @@ async def get_rss_events() -> list[RSSEvent]:
             events = await _fetch_feed(source, url)
             all_events.extend(events)
         except Exception:
+            logger.warning("failed to fetch feed", extra={"extra_fields": {
+                "source": source, "url": url,
+            }}, exc_info=True)
             continue
 
+    logger.info("fetched all rss events", extra={"extra_fields": {
+        "total_count": len(all_events), "feed_count": len(FEEDS),
+    }})
     all_events.sort(key=lambda e: e.date, reverse=True)
     return all_events
 
@@ -126,6 +140,7 @@ def _strip_html(text: str) -> str:
 @async_ttl_cache(1800)
 async def fetch_fed_article(url: str) -> str:
     """Fetch and extract article text from a Federal Reserve press release page."""
+    logger.debug("fetching fed article", extra={"extra_fields": {"url": url}})
     async with httpx.AsyncClient() as client:
         resp = await client.get(url, timeout=15, follow_redirects=True)
         resp.raise_for_status()
@@ -182,4 +197,8 @@ async def fetch_fed_article(url: str) -> str:
         if stop_idx > 0:
             result = result[:stop_idx]
             break
-    return result.strip()
+    result = result.strip()
+    logger.info("fetched fed article", extra={"extra_fields": {
+        "url": url, "length": len(result),
+    }})
+    return result
