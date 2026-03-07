@@ -4,6 +4,9 @@ from dataclasses import dataclass
 
 from macroterm.data.bls import search_catalog
 from macroterm.data.fred import search_series
+from macroterm.logger import get_logger
+
+logger = get_logger("search")
 
 
 @dataclass
@@ -19,6 +22,9 @@ class SearchResult:
 async def search_all(
     query: str, limit: int = 25, tag_names: str | None = None,
 ) -> list[SearchResult]:
+    logger.debug("searching all sources", extra={"extra_fields": {
+        "query": query, "limit": limit, "tag_names": tag_names,
+    }})
     results: list[SearchResult] = []
 
     # BLS catalog search is synchronous/instant — run it first
@@ -51,6 +57,11 @@ async def search_all(
                 last_updated=s.last_updated,
             ))
     except Exception:
-        pass  # FRED failure shouldn't block BLS results
+        logger.warning("FRED search failed, returning BLS results only", extra={"extra_fields": {
+            "query": query,
+        }}, exc_info=True)
 
+    logger.info("search completed", extra={"extra_fields": {
+        "query": query, "count": len(results),
+    }})
     return results
