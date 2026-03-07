@@ -6,6 +6,9 @@ from dataclasses import dataclass
 import httpx
 
 from macroterm.data.cache import async_ttl_cache
+from macroterm.logger import get_logger
+
+logger = get_logger("bls")
 
 BLS_BASE_URL = "https://api.bls.gov/publicAPI/v2"
 
@@ -38,6 +41,9 @@ async def get_series_data(
     if end_year:
         payload["endyear"] = str(end_year)
 
+    logger.debug("fetching series data", extra={"extra_fields": {
+        "series_ids": series_ids, "start_year": start_year, "end_year": end_year,
+    }})
     async with httpx.AsyncClient() as client:
         resp = await client.post(
             f"{BLS_BASE_URL}/timeseries/data/",
@@ -59,6 +65,10 @@ async def get_series_data(
             )
             for d in series.get("data", [])
         ]
+    logger.info("fetched series data", extra={"extra_fields": {
+        "series_ids": series_ids,
+        "count": sum(len(v) for v in results.values()),
+    }})
     return results
 
 

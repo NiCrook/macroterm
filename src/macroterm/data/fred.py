@@ -7,6 +7,9 @@ from datetime import date, timedelta
 import httpx
 
 from macroterm.data.cache import async_ttl_cache
+from macroterm.logger import get_logger
+
+logger = get_logger("fred")
 
 FRED_BASE_URL = "https://api.stlouisfed.org/fred"
 
@@ -235,6 +238,9 @@ async def get_category_series(
     }
     if tag_names:
         params["tag_names"] = tag_names
+    logger.debug("fetching category series", extra={"extra_fields": {
+        "category_id": category_id, "limit": limit, "tag_names": tag_names,
+    }})
     async with httpx.AsyncClient() as client:
         resp = await client.get(
             f"{FRED_BASE_URL}/category/series",
@@ -243,7 +249,7 @@ async def get_category_series(
         resp.raise_for_status()
         data = resp.json()
 
-    return [
+    results = [
         Series(
             id=s["id"],
             title=s["title"],
@@ -253,6 +259,10 @@ async def get_category_series(
         )
         for s in data.get("seriess", [])
     ]
+    logger.info("fetched category series", extra={"extra_fields": {
+        "category_id": category_id, "count": len(results),
+    }})
+    return results
 
 
 @async_ttl_cache(300)
@@ -267,6 +277,9 @@ async def search_series(
     }
     if tag_names:
         params["tag_names"] = tag_names
+    logger.debug("searching series", extra={"extra_fields": {
+        "query": query, "limit": limit, "tag_names": tag_names,
+    }})
     async with httpx.AsyncClient() as client:
         resp = await client.get(
             f"{FRED_BASE_URL}/series/search",
@@ -275,7 +288,7 @@ async def search_series(
         resp.raise_for_status()
         data = resp.json()
 
-    return [
+    results = [
         Series(
             id=s["id"],
             title=s["title"],
@@ -285,10 +298,17 @@ async def search_series(
         )
         for s in data.get("seriess", [])
     ]
+    logger.info("search series completed", extra={"extra_fields": {
+        "query": query, "count": len(results),
+    }})
+    return results
 
 
 @async_ttl_cache(600)
 async def get_observations(series_id: str, limit: int = 10) -> list[Observation]:
+    logger.debug("fetching observations", extra={"extra_fields": {
+        "series_id": series_id, "limit": limit,
+    }})
     async with httpx.AsyncClient() as client:
         resp = await client.get(
             f"{FRED_BASE_URL}/series/observations",
@@ -303,14 +323,19 @@ async def get_observations(series_id: str, limit: int = 10) -> list[Observation]
         resp.raise_for_status()
         data = resp.json()
 
-    return [
+    results = [
         Observation(date=o["date"], value=o["value"])
         for o in data.get("observations", [])
     ]
+    logger.info("fetched observations", extra={"extra_fields": {
+        "series_id": series_id, "count": len(results),
+    }})
+    return results
 
 
 @async_ttl_cache(3600)
 async def get_releases(limit: int = 50) -> list[Release]:
+    logger.debug("fetching releases", extra={"extra_fields": {"limit": limit}})
     async with httpx.AsyncClient() as client:
         resp = await client.get(
             f"{FRED_BASE_URL}/releases",
@@ -323,7 +348,7 @@ async def get_releases(limit: int = 50) -> list[Release]:
         resp.raise_for_status()
         data = resp.json()
 
-    return [
+    results = [
         Release(
             id=r["id"],
             name=r["name"],
@@ -331,6 +356,8 @@ async def get_releases(limit: int = 50) -> list[Release]:
         )
         for r in data.get("releases", [])
     ]
+    logger.info("fetched releases", extra={"extra_fields": {"count": len(results)}})
+    return results
 
 
 @async_ttl_cache(3600)
@@ -344,6 +371,9 @@ async def get_release_dates(
     if end is None:
         end = start + timedelta(days=14)
 
+    logger.debug("fetching release dates", extra={"extra_fields": {
+        "start": start.isoformat(), "end": end.isoformat(), "limit": limit,
+    }})
     async with httpx.AsyncClient() as client:
         resp = await client.get(
             f"{FRED_BASE_URL}/releases/dates",
@@ -360,7 +390,7 @@ async def get_release_dates(
         resp.raise_for_status()
         data = resp.json()
 
-    return [
+    results = [
         ReleaseDate(
             release_id=r["release_id"],
             release_name=r.get("release_name", ""),
@@ -368,3 +398,7 @@ async def get_release_dates(
         )
         for r in data.get("release_dates", [])
     ]
+    logger.info("fetched release dates", extra={"extra_fields": {
+        "start": start.isoformat(), "end": end.isoformat(), "count": len(results),
+    }})
+    return results
