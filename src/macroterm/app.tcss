@@ -90,3 +90,30 @@ TabbedContent {
 #feed-detail-body {
     margin: 1 0;
 }
+
+#compare-container {
+    height: 1fr;
+    padding: 1 2;
+}
+
+#compare-sparkline-a {
+    height: 3;
+    margin: 0 1;
+    color: $success;
+}
+
+#compare-sparkline-b {
+    height: 3;
+    margin: 0 1;
+    color: $warning;
+}
+
+#compare-label-a, #compare-label-b {
+    height: 1;
+    color: $text-muted;
+    margin: 0 1;
+}
+
+#compare-table {
+    height: 1fr;
+}

@@ -6,32 +6,8 @@ from textual.widgets import DataTable, Footer, Header, LoadingIndicator, Sparkli
 
 from macroterm.data import watchlist
 from macroterm.data.bls import get_series_data
+from macroterm.data.format import format_change, parse_floats
 from macroterm.data.fred import get_observations
-
-
-def _parse_floats(values: list[str]) -> list[float]:
-    result = []
-    for v in values:
-        try:
-            result.append(float(v))
-        except (ValueError, TypeError):
-            pass
-    return result
-
-
-def _format_change(current_val: str, prev_val: str) -> str:
-    try:
-        curr = float(current_val)
-        prev = float(prev_val)
-    except (ValueError, TypeError):
-        return "[dim]—[/dim]"
-    diff = curr - prev
-    if diff > 0:
-        return f"[green]▲ +{diff:.2f}[/green]"
-    elif diff < 0:
-        return f"[red]▼ {diff:.2f}[/red]"
-    else:
-        return "[dim]— 0.00[/dim]"
 
 
 class SeriesDetailScreen(Screen):
@@ -86,13 +62,13 @@ class SeriesDetailScreen(Screen):
         if not observations:
             table.add_row("—", "No observations found", "")
             return
-        values = _parse_floats([o.value for o in reversed(observations)])
+        values = parse_floats([o.value for o in reversed(observations)])
         if values:
             sparkline.data = values
             sparkline.display = True
         for i, o in enumerate(observations):
             if i + 1 < len(observations):
-                change = _format_change(o.value, observations[i + 1].value)
+                change = format_change(o.value, observations[i + 1].value)
             else:
                 change = "[dim]—[/dim]"
             table.add_row(o.date, o.value, change)
@@ -103,14 +79,14 @@ class SeriesDetailScreen(Screen):
         if not series:
             table.add_row("—", "No data found", "")
             return
-        values = _parse_floats([p.value for p in reversed(series)])
+        values = parse_floats([p.value for p in reversed(series)])
         if values:
             sparkline.data = values
             sparkline.display = True
         for i, point in enumerate(series):
             date_label = f"{point.period_name} {point.year}"
             if i + 1 < len(series):
-                change = _format_change(point.value, series[i + 1].value)
+                change = format_change(point.value, series[i + 1].value)
             else:
                 change = "[dim]—[/dim]"
             table.add_row(date_label, point.value, change)

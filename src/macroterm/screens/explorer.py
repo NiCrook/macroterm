@@ -18,16 +18,10 @@ from macroterm.data.fred import (
     search_series,
 )
 from macroterm.data.bls import get_series_data
+from macroterm.data.format import is_float
 from macroterm.data.search import search_all
 from macroterm.data import watchlist
 from macroterm.screens.detail import SeriesDetailScreen
-
-def _is_float(v: str) -> bool:
-    try:
-        float(v)
-        return True
-    except (ValueError, TypeError):
-        return False
 
 
 BLANK = Select.BLANK
@@ -304,7 +298,7 @@ class ExplorerPane(Vertical):
             else:
                 obs = await get_observations(series_id, limit=20)
                 raw = [o.value for o in reversed(obs)] if obs else []
-            values = [float(v) for v in raw if _is_float(v)]
+            values = [float(v) for v in raw if is_float(v)]
             if values:
                 sparkline.data = values
                 label.update(f"[dim]{title}[/dim]")
