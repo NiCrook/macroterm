@@ -1,3 +1,5 @@
+import asyncio
+
 from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.containers import Vertical
@@ -112,6 +114,31 @@ class WatchlistPane(Vertical):
     def _refresh_watchlist(self) -> None:
         self.run_worker(self._fetch_data(), name="fetch_watchlist", exclusive=True)
 
+    async def _fetch_entry(
+        self, entry: watchlist.WatchlistEntry,
+    ) -> tuple[str, str, str]:
+        """Fetch latest value, date, and change for a single watchlist entry."""
+        if entry.source == "FRED":
+            obs = await get_observations(entry.series_id, limit=2)
+            if obs:
+                value = obs[0].value
+                date = obs[0].date
+                change = format_change(obs[0].value, obs[1].value) if len(obs) > 1 else "[dim]—[/dim]"
+            else:
+                value, date, change = "N/A", "—", "[dim]—[/dim]"
+        elif entry.source == "BLS":
+            data = await get_series_data([entry.series_id])
+            series = data.get(entry.series_id, [])
+            if series:
+                value = series[0].value
+                date = f"{series[0].period_name} {series[0].year}"
+                change = format_change(series[0].value, series[1].value) if len(series) > 1 else "[dim]—[/dim]"
+            else:
+                value, date, change = "N/A", "—", "[dim]—[/dim]"
+        else:
+            value, date, change = "N/A", "—", "[dim]—[/dim]"
+        return value, date, change
+
     async def _fetch_data(self) -> None:
         loading = self.query_one("#watchlist-loading")
         table = self.query_one("#watchlist-table", DataTable)
@@ -125,33 +152,18 @@ class WatchlistPane(Vertical):
             table.add_row("—", "—", "No bookmarked series", "—", "—", "—")
             return
 
-        for entry in entries:
+        async def _safe_fetch(entry: watchlist.WatchlistEntry) -> tuple[str, str, str]:
             try:
-                if entry.source == "FRED":
-                    obs = await get_observations(entry.series_id, limit=2)
-                    if obs:
-                        value = obs[0].value
-                        date = obs[0].date
-                        change = format_change(obs[0].value, obs[1].value) if len(obs) > 1 else "[dim]—[/dim]"
-                    else:
-                        value, date, change = "N/A", "—", "[dim]—[/dim]"
-                elif entry.source == "BLS":
-                    data = await get_series_data([entry.series_id])
-                    series = data.get(entry.series_id, [])
-                    if series:
-                        value = series[0].value
-                        date = f"{series[0].period_name} {series[0].year}"
-                        change = format_change(series[0].value, series[1].value) if len(series) > 1 else "[dim]—[/dim]"
-                    else:
-                        value, date, change = "N/A", "—", "[dim]—[/dim]"
-                else:
-                    value, date, change = "N/A", "—", "[dim]—[/dim]"
+                return await self._fetch_entry(entry)
             except Exception:
                 logger.warning("failed to fetch watchlist entry data", extra={"extra_fields": {
                     "series_id": entry.series_id, "source": entry.source,
                 }}, exc_info=True)
-                value, date, change = "Error", "—", "[dim]—[/dim]"
+                return "Error", "—", "[dim]—[/dim]"
 
+        results = await asyncio.gather(*[_safe_fetch(e) for e in entries])
+
+        for entry, (value, date, change) in zip(entries, results):
             row_key = f"{entry.source}:{entry.series_id}"
             table.add_row(entry.source, entry.series_id, entry.display_name, value, date, change, key=row_key)
 
