@@ -4,7 +4,7 @@
 
 - [X] Add more RSS feeds (ECB, ECB Blog, BIS Speeches; IMF/World Bank/OECD lack public RSS)
 - [ ] Show release times in Calendar tab (FRED provides time-of-day data)
-- [ ] Series comparison view — side-by-side table or overlaid sparklines for two series
+- [X] Series comparison view — side-by-side table or overlaid sparklines for two series
 
 ## UX & Navigation
 
