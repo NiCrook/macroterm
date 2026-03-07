@@ -7,6 +7,10 @@ import sqlite3
 import time
 from typing import Any
 
+from macroterm.logger import get_logger
+
+logger = get_logger("cache")
+
 _cache: dict[str, tuple[float, Any]] = {}
 
 
@@ -73,13 +77,22 @@ def async_ttl_cache(ttl_seconds: int):
             if key in _cache:
                 expires, value = _cache[key]
                 if now < expires:
+                    logger.debug("memory cache hit", extra={"extra_fields": {
+                        "func": func.__qualname__,
+                    }})
                     return value
 
             hit, value = _disk_cache.get(key)
             if hit:
+                logger.debug("disk cache hit", extra={"extra_fields": {
+                    "func": func.__qualname__,
+                }})
                 _cache[key] = (now + ttl_seconds, value)
                 return value
 
+            logger.debug("cache miss", extra={"extra_fields": {
+                "func": func.__qualname__,
+            }})
             result = await func(*args, **kwargs)
             expires = now + ttl_seconds
             _cache[key] = (expires, result)
@@ -99,4 +112,7 @@ def clear_cache(prefix: str | None = None) -> int:
             del _cache[k]
         count = len(keys)
     count += _disk_cache.clear(prefix)
+    logger.info("cache cleared", extra={"extra_fields": {
+        "prefix": prefix, "entries_removed": count,
+    }})
     return count
