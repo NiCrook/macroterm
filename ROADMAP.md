@@ -2,7 +2,7 @@
 
 ## Data & Content
 
-- [ ] Add more RSS feeds (ECB, IMF, World Bank, OECD)
+- [X] Add more RSS feeds (ECB, ECB Blog, BIS Speeches; IMF/World Bank/OECD lack public RSS)
 - [ ] Show release times in Calendar tab (FRED provides time-of-day data)
 - [ ] Series comparison view — side-by-side table or overlaid sparklines for two series
 
@@ -16,7 +16,7 @@
 
 ## Technical
 
-- [ ] Persistent cache (SQLite or JSON on disk) to survive restarts
+- [X] Persistent cache (SQLite or JSON on disk) to survive restarts
 - [ ] User config file for RSS feed selection, refresh intervals, default tab
 - [ ] Toast notifications for errors instead of inline error rows
 - [ ] Test suite for the data layer (parsing, catalog search, cache TTL)
