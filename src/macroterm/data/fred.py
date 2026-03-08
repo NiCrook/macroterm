@@ -17,6 +17,7 @@ FRED_BASE_URL = "https://api.stlouisfed.org/fred"
 def _api_key() -> str:
     key = os.environ.get("FRED_API_KEY", "")
     if not key:
+        logger.error("FRED_API_KEY not set")
         raise RuntimeError(
             "FRED_API_KEY environment variable is not set. "
             "Get a free key at https://fred.stlouisfed.org/docs/api/api_key.html"
@@ -241,7 +242,7 @@ async def get_category_series(
     logger.debug("fetching category series", extra={"extra_fields": {
         "category_id": category_id, "limit": limit, "tag_names": tag_names,
     }})
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=30) as client:
         resp = await client.get(
             f"{FRED_BASE_URL}/category/series",
             params=params,
@@ -259,7 +260,7 @@ async def get_category_series(
         )
         for s in data.get("seriess", [])
     ]
-    logger.info("fetched category series", extra={"extra_fields": {
+    logger.info("category series fetched", extra={"extra_fields": {
         "category_id": category_id, "count": len(results),
     }})
     return results
@@ -277,10 +278,10 @@ async def search_series(
     }
     if tag_names:
         params["tag_names"] = tag_names
-    logger.debug("searching series", extra={"extra_fields": {
+    logger.debug("searching FRED series", extra={"extra_fields": {
         "query": query, "limit": limit, "tag_names": tag_names,
     }})
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=30) as client:
         resp = await client.get(
             f"{FRED_BASE_URL}/series/search",
             params=params,
@@ -298,7 +299,7 @@ async def search_series(
         )
         for s in data.get("seriess", [])
     ]
-    logger.info("search series completed", extra={"extra_fields": {
+    logger.info("FRED search completed", extra={"extra_fields": {
         "query": query, "count": len(results),
     }})
     return results
@@ -309,7 +310,7 @@ async def get_observations(series_id: str, limit: int = 10) -> list[Observation]
     logger.debug("fetching observations", extra={"extra_fields": {
         "series_id": series_id, "limit": limit,
     }})
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=30) as client:
         resp = await client.get(
             f"{FRED_BASE_URL}/series/observations",
             params={
@@ -327,7 +328,7 @@ async def get_observations(series_id: str, limit: int = 10) -> list[Observation]
         Observation(date=o["date"], value=o["value"])
         for o in data.get("observations", [])
     ]
-    logger.info("fetched observations", extra={"extra_fields": {
+    logger.info("observations fetched", extra={"extra_fields": {
         "series_id": series_id, "count": len(results),
     }})
     return results
@@ -336,7 +337,7 @@ async def get_observations(series_id: str, limit: int = 10) -> list[Observation]
 @async_ttl_cache(3600)
 async def get_releases(limit: int = 50) -> list[Release]:
     logger.debug("fetching releases", extra={"extra_fields": {"limit": limit}})
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=30) as client:
         resp = await client.get(
             f"{FRED_BASE_URL}/releases",
             params={
@@ -356,7 +357,7 @@ async def get_releases(limit: int = 50) -> list[Release]:
         )
         for r in data.get("releases", [])
     ]
-    logger.info("fetched releases", extra={"extra_fields": {"count": len(results)}})
+    logger.info("releases fetched", extra={"extra_fields": {"count": len(results)}})
     return results
 
 
@@ -374,7 +375,7 @@ async def get_release_dates(
     logger.debug("fetching release dates", extra={"extra_fields": {
         "start": start.isoformat(), "end": end.isoformat(), "limit": limit,
     }})
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=30) as client:
         resp = await client.get(
             f"{FRED_BASE_URL}/releases/dates",
             params={
@@ -398,7 +399,7 @@ async def get_release_dates(
         )
         for r in data.get("release_dates", [])
     ]
-    logger.info("fetched release dates", extra={"extra_fields": {
+    logger.info("release dates fetched", extra={"extra_fields": {
         "start": start.isoformat(), "end": end.isoformat(), "count": len(results),
     }})
     return results
