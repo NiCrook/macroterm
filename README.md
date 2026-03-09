@@ -2,6 +2,8 @@
 
 A terminal UI for browsing economic data, releases, and central bank feeds. Built with [Textual](https://textual.textualize.io/).
 
+![MacroTerm screenshot](assets/screenshot.png)
+
 ## Features
 
 - **Calendar** — Upcoming economic release dates from FRED
